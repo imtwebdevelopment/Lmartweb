@@ -498,14 +498,11 @@ const RelatedProducts = ({
             <div className="relative h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
               {product.image ? (
                 <img
-                  src={product.image}
+                  src={resolveImageUrl(product.image)}
                   alt={product.name}
                   className="max-w-full max-h-full object-contain"
                   loading="lazy"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "https://placehold.co/300x200?text=Product";
-                  }}
+                  onError={handleImageError}
                 />
               ) : (
                 <svg

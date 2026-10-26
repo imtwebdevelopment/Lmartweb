@@ -14,10 +14,10 @@ const appName = typeof __app_id !== "undefined" && __app_id ? `print-${__app_id}
 const app = getApps().find((a) => a.name === appName) || initializeApp(firebaseConfig, appName);
 const db = getFirestore(app);
 
-import { getProductMainImage } from "../utils/imageUtils";
+import { getProductMainImage, resolveImageUrl, handleImageError, FALLBACK_IMAGE } from "../utils/imageUtils";
 
 /* --------------------- Helpers & Components --------------------- */
-const PLACEHOLDER_IMAGE = "https://placehold.co/400x300?text=No+Image";
+const PLACEHOLDER_IMAGE = FALLBACK_IMAGE;
 
 const getMainImageUrl = (product) => {
   return getProductMainImage(product);
@@ -219,12 +219,12 @@ const isOutOfStock = availableStock === 0;
  <div className="relative flex items-center justify-center bg-white p-4 h-48 sm:h-56 overflow-hidden rounded-lg">
   
   <img
-    src={product.image}
+    src={resolveImageUrl(product.image)}
     alt={product.name}
     className={`object-contain w-full h-full transition-transform duration-300 ${
       isOutOfStock ? "scale-105 blur-[1px]" : "scale-110 sm:scale-100"
     }`}
-    onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
+    onError={handleImageError}
   />
 
   {/* ❤️ WISHLIST (ALWAYS VISIBLE) */}

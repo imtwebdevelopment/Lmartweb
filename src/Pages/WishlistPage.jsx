@@ -4,9 +4,9 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { db } from "../../firebase";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
-import { getProductMainImage } from "../utils/imageUtils";
+import { getProductMainImage, resolveImageUrl, handleImageError, FALLBACK_IMAGE } from "../utils/imageUtils";
 
-const PLACEHOLDER_IMAGE = "https://placehold.co/400x300?text=No+Image";
+const PLACEHOLDER_IMAGE = FALLBACK_IMAGE;
 
 // ⭐ STAR RATING COMPONENT
 const StarRating = ({ rating = 0, size = "w-4 h-4" }) => {
@@ -312,12 +312,12 @@ const handleNotifyMe = (e) => {
   
   {/* PRODUCT IMAGE */}
   <img
-    src={productImage}
+    src={resolveImageUrl(productImage)}
     alt={displayProduct.name}
     className={`object-contain w-full h-full transition-transform duration-300 ${
       isOutOfStock ? "scale-105 blur-[1px]" : ""
     }`}
-    onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
+    onError={handleImageError}
   />
 
   {/* ❤️ WISHLIST BUTTON */}
