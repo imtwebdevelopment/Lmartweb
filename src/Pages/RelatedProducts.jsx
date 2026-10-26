@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase";
+import { getProductMainImage } from "../utils/imageUtils";
 
 // 🔥 ADDED: Same placeholder image as EMarket.jsx
 const PLACEHOLDER_IMAGE = "https://placehold.co/400x300?text=No+Image";
@@ -125,11 +126,7 @@ const RelatedProducts = ({
               id: doc.id,
               ...data,
               name: data.name || data.productName || "Unnamed Product",
-              image:
-                data.imageUrls?.[0]?.url ||
-                data.mainImage ||
-                data.image ||
-                "",
+              image: getProductMainImage(data),
               price:
                 data.offerPrice ||
                 data.price ||

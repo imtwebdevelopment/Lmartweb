@@ -4,9 +4,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { db } from "../../firebase";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { getProductMainImage, resolveImageUrl, handleImageError, FALLBACK_IMAGE } from "../utils/imageUtils";
 
 // ----------- Helper functions -----------
-const PLACEHOLDER_IMAGE = "https://placehold.co/400x300?text=No+Image";
+const PLACEHOLDER_IMAGE = FALLBACK_IMAGE;
 
 const pickVariant = (product) => {
 
@@ -77,12 +78,12 @@ const reviewCount = reviewData?.reviewCount ?? 0;
       {/* IMAGE */}
     <div className="relative flex items-center justify-center bg-white h-44 sm:h-52 overflow-hidden">
   <img
-    src={imageUrl}
+    src={resolveImageUrl(imageUrl)}
     alt={product.name}
     className={`object-contain w-full h-full transition ${
       isOutOfStock ? "blur-[1px] scale-105" : ""
     }`}
-    onError={(e) => (e.target.src = PLACEHOLDER_IMAGE)}
+    onError={handleImageError}
   />
 
   {/* 🔥 OUT OF STOCK OVERLAY */}
@@ -269,23 +270,7 @@ const Home = () => {
               offerPrice = Number(productData.offerPrice) || price;
             }
 
-            let imageUrl = "";
-            if (productData.mainImageUrl && productData.mainImageUrl.trim() !== "") {
-              imageUrl = productData.mainImageUrl;
-            } else if (
-              productData.imageUrls &&
-              Array.isArray(productData.imageUrls) &&
-              productData.imageUrls.length > 0
-            ) {
-              const mainImage = productData.imageUrls.find(img => img.isMain === true);
-              if (mainImage && mainImage.url) {
-                imageUrl = mainImage.url;
-              } else if (productData.imageUrls[0].url) {
-                imageUrl = productData.imageUrls[0].url;
-              }
-            } else if (productData.image && productData.image.trim() !== "") {
-              imageUrl = productData.image;
-            }
+            let imageUrl = getProductMainImage(productData);
 
            fetchedTrendingProducts.push({
   ...productData,
@@ -341,23 +326,7 @@ const Home = () => {
               offerPrice = Number(productData.offerPrice) || price;
             }
 
-            let imageUrl = "";
-            if (productData.mainImageUrl && productData.mainImageUrl.trim() !== "") {
-              imageUrl = productData.mainImageUrl;
-            } else if (
-              productData.imageUrls &&
-              Array.isArray(productData.imageUrls) &&
-              productData.imageUrls.length > 0
-            ) {
-              const mainImage = productData.imageUrls.find(img => img.isMain === true);
-              if (mainImage && mainImage.url) {
-                imageUrl = mainImage.url;
-              } else if (productData.imageUrls[0].url) {
-                imageUrl = productData.imageUrls[0].url;
-              }
-            } else if (productData.image && productData.image.trim() !== "") {
-              imageUrl = productData.image;
-            }
+            let imageUrl = getProductMainImage(productData);
 fetchedProducts.push({
   ...productData,
   id: doc.id,
@@ -587,9 +556,10 @@ const selectRandomProducts = (products) => {
               }`}
             >
               <img
-                src={poster.imageUrl}
+                src={resolveImageUrl(poster.imageUrl)}
                 alt={poster.title}
                 className="w-full h-full object-fill"
+                onError={handleImageError}
               />
             </div>
           ))
@@ -661,21 +631,11 @@ const selectRandomProducts = (products) => {
                         {/* 🔥 UPDATED: Changed from object-fit to object-contain for full images */}
                         {product.image ? (
                       <div className="relative w-full h-14 sm:h-16 md:h-20 lg:h-24 xl:h-28 flex items-center justify-center bg-white p-2">
-  {/* 🔥 TRENDING BADGE */}
-    {/* <span className="absolute top-1 left-1 z-20 bg-orange-500 text-white text-[8px] sm:text-[9px] lg:text-[10px] font-bold px-1.5 py-0.5 rounded shadow">
-      LATEST
-    </span> */}
-
   <img
-    src={product.image}
+    src={resolveImageUrl(product.image)}
     alt={product.name}
     className="object-contain w-full h-full max-h-full"
-    onError={(e) => {
-      e.target.onerror = null;  
-      e.target.style.display = "none";
-      e.target.parentElement.innerHTML =
-        '<div class="w-full h-full bg-gray-200 flex items-center justify-center"><svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg></div>';
-    }}
+    onError={handleImageError}
   />
 </div>
 

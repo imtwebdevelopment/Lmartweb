@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { db } from '../../firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { useCart } from '../context/CartContext';
+import { getProductMainImage, handleImageError, resolveImageUrl } from '../utils/imageUtils';
 
 const SearchResults = () => {
   const [products, setProducts] = useState([]);
@@ -118,7 +119,7 @@ const SearchResults = () => {
       name: product.name,
       price: price,
       quantity: 1,
-      image: product.mainImageUrl || 'https://placehold.co/300x200',
+      image: getProductMainImage(product),
       variantId: product.variants?.[0]?.variantId || null,
     };
 
@@ -293,8 +294,9 @@ const SearchResults = () => {
                       {/* Product Image */}
                       <div className="relative overflow-hidden">
                         <img
-                          src={product.mainImageUrl || 'https://placehold.co/400x300?text=No+Image'}
+                          src={getProductMainImage(product)}
                           alt={product.name}
+                          onError={handleImageError}
                           className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                         {discount > 0 && (

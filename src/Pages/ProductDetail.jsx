@@ -19,6 +19,7 @@ import {
 import { getStorage, ref, getDownloadURL } from "firebase/storage";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
+import { resolveImageUrl, handleImageError, FALLBACK_IMAGE } from "../utils/imageUtils";
 
 
 // ⭐ Star Rating Component
@@ -1177,15 +1178,16 @@ useEffect(() => {
     );
 
     if (colorImages.length > 0) {
-      setCurrentImg(colorImages[0].url);
+      setCurrentImg(resolveImageUrl(colorImages[0].url));
       setCurrentIsVideo(false);
       setImageLoading(true);
       return;
     }
   }
 
-  // fallback
-  setCurrentImg(images[0].url);
+  // fallback to main image or first available image
+  const mainImageObj = images.find(img => img.isMain) || images[0];
+  setCurrentImg(resolveImageUrl(mainImageObj.url));
   setCurrentIsVideo(false);
   setImageLoading(true);
 }, [images, selectedColor]);
@@ -1251,17 +1253,47 @@ productData = {
     };
 
     const processProductData = (productData) => {
-      const imageUrls = productData.imageUrls || [];
-      const galleryImages = imageUrls
-  .filter((img) => typeof img === "object" && img.isMain !== true)
-  .map((img) => ({
-    url: img.url,
-    color: img.color || "",
-    isMain: img.isMain || false,
-  }))
-  .filter(img => img.url);
+      const rawImageUrls = productData.imageUrls || [];
+      const normalizedImages = [];
 
-setImages(galleryImages);
+      // Add mainImageUrl if present
+      if (productData.mainImageUrl) {
+        normalizedImages.push({
+          url: resolveImageUrl(productData.mainImageUrl),
+          color: "",
+          isMain: true,
+        });
+      }
+
+      // Add other images from imageUrls
+      rawImageUrls.forEach((img) => {
+        if (!img) return;
+        const url = typeof img === "object" ? img.url : img;
+        if (!url) return;
+        const resolved = resolveImageUrl(url);
+        const isMain = typeof img === "object" ? !!img.isMain : false;
+        const color = typeof img === "object" ? img.color || "" : "";
+
+        // Avoid adding exact duplicate of main image
+        if (!normalizedImages.some(existing => existing.url === resolved)) {
+          normalizedImages.push({
+            url: resolved,
+            color,
+            isMain,
+          });
+        }
+      });
+
+      // Fallback if no images found but product.image exists
+      if (normalizedImages.length === 0 && productData.image) {
+        normalizedImages.push({
+          url: resolveImageUrl(productData.image),
+          color: "",
+          isMain: true,
+        });
+      }
+
+      setImages(normalizedImages);
 
 
 
@@ -2051,7 +2083,7 @@ const allMedia = [
                           }}
                           poster={
                             images[0]?.url ||
-                            "https://placehold.co/600x400?text=Video+Loading"
+                            FALLBACK_IMAGE
                           }
                           playsInline
                         />
@@ -2068,6 +2100,10 @@ const allMedia = [
                           imageLoading ? "opacity-0" : "opacity-100"
                         }`}
                         onLoad={() => setImageLoading(false)}
+                        onError={(e) => {
+                          handleImageError(e);
+                          setImageLoading(false);
+                        }}
                         loading="lazy"
                       />
                     )}
@@ -2086,7 +2122,7 @@ const allMedia = [
                       className="w-full h-full object-contain transition-opacity duration-300"
                       onLoad={() => setImageLoading(false)}
                       onError={(e) => {
-                        e.target.src = "https://placehold.co/500x300?text=No+Image";
+                        handleImageError(e);
                         setImageLoading(false);
                       }}
                       loading="lazy"
@@ -2125,10 +2161,7 @@ const allMedia = [
               alt={`Thumbnail ${i + 1}`}
               className="h-20 sm:h-24 w-full object-contain bg-white transition-opacity"
               loading="lazy"
-              onError={(e) => {
-                e.currentTarget.src =
-                  "https://placehold.co/150x100?text=Image";
-              }}
+              onError={handleImageError}
             />
           )}
         </button>

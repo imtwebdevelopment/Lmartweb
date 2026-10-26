@@ -14,17 +14,14 @@ const appName = (typeof __app_id !== "undefined" && __app_id) ? `lm-${__app_id}`
 const app = getApps().find(a => a.name === appName) || initializeApp(firebaseConfig, appName);
 const db = getFirestore(app);
 
+import { getProductMainImage } from "../utils/imageUtils";
+
 // ---------------- HELPERS ----------------
 const PLACEHOLDER_IMAGE = "https://placehold.co/400x300?text=No+Image";
 const MAX_SLIDER = 100000;
 
 const getMainImageUrl = (product) => {
-  if (product.mainImageUrl) return product.mainImageUrl;
-  if (Array.isArray(product.imageUrls) && product.imageUrls.length > 0) {
-    const main = product.imageUrls.find(x => x.isMain);
-    return (main?.url || product.imageUrls[0].url);
-  }
-  return PLACEHOLDER_IMAGE;
+  return getProductMainImage(product);
 };
 
 const pickVariant = (product) => {

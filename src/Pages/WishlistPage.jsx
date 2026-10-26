@@ -4,6 +4,7 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { db } from "../../firebase";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { getProductMainImage } from "../utils/imageUtils";
 
 const PLACEHOLDER_IMAGE = "https://placehold.co/400x300?text=No+Image";
 
@@ -135,12 +136,7 @@ const fetchProductDetails = async (productId) => {
           const reviewStats = await fetchReviewStats(productId);
           
           // Determine image URL
-          const image = 
-            productData.imageUrls?.find((i) => i.isMain)?.url ||
-            productData.imageUrls?.[0]?.url ||
-            productData.mainImageUrl || 
-            productData.image || 
-            PLACEHOLDER_IMAGE;
+          const image = getProductMainImage(productData);
           
           // Determine productTag from collection or data
           const productTag = productData.productTag || collectionName;

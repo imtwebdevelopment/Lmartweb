@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { Truck, Shield } from "lucide-react";
+import { resolveImageUrl, handleImageError, FALLBACK_IMAGE } from "../utils/imageUtils";
 
 
 const Cart = () => {
@@ -324,8 +325,9 @@ const getCartSummary = () => {
                       {/* PRODUCT INFO */}
                       <div className="col-span-5 flex items-center gap-4">
                         <img
-                          src={item.image || "https://via.placeholder.com/80"}
+                          src={resolveImageUrl(item.image)}
                           alt={item.name}
+                          onError={handleImageError}
                           className="w-20 h-20 object-fit rounded-lg border shadow-sm"
                         />
                         <div className="flex-1 min-w-0">
@@ -480,8 +482,9 @@ const getCartSummary = () => {
 
                         {/* PRODUCT IMAGE */}
                         <img
-                          src={item.image || "https://via.placeholder.com/96"}
+                          src={resolveImageUrl(item.image)}
                           alt={item.name}
+                          onError={handleImageError}
                           className="w-24 h-24 object-cover rounded-lg border shadow-sm flex-shrink-0"
                         />
 

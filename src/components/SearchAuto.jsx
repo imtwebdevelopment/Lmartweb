@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import { getProductMainImage, handleImageError } from "../utils/imageUtils";
 
 function SearchAuto() {
   const [query, setQuery] = useState("");
@@ -96,8 +97,9 @@ function SearchAuto() {
               onClick={() => handleSelectSuggestion(item.name)}
             >
               <img
-                src={item.mainImageUrl}
+                src={getProductMainImage(item)}
                 alt={item.name}
+                onError={handleImageError}
                 className="w-10 h-10 rounded object-cover"
               />
               <div>

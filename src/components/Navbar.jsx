@@ -20,6 +20,7 @@ import {
   deleteObject
 } from "firebase/storage";
 import { useAuth } from "../context/AuthProvaider";
+import { getProductMainImage, handleImageError } from "../utils/imageUtils";
 
 
 const Navbar = () => {
@@ -1132,8 +1133,9 @@ const Navbar = () => {
                         onClick={() => handleSelectSuggestion(item)}
                       >
                         <img
-                          src={item.mainImageUrl}
+                          src={getProductMainImage(item)}
                           alt={item.name}
+                          onError={handleImageError}
                           className="w-8 h-8 rounded object-cover"
                         />
                         <div>
@@ -1487,8 +1489,9 @@ const Navbar = () => {
                         onClick={() => handleSelectSuggestion(item)}
                       >
                         <img
-                          src={item.mainImageUrl}
+                          src={getProductMainImage(item)}
                           alt={item.name}
+                          onError={handleImageError}
                           className="w-6 h-6 rounded object-cover"
                         />
                         <div>

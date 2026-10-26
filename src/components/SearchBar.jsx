@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import SearchBar from "./SearchBar";
+import { getProductMainImage, handleImageError } from "../utils/imageUtils";
 
 function ProductsPage() {
   const [products, setProducts] = useState([]);
@@ -62,8 +63,9 @@ function ProductsPage() {
               className="border shadow-sm rounded-lg p-2 bg-white"
             >
               <img
-                src={product.mainImageUrl}
+                src={getProductMainImage(product)}
                 alt={product.name}
+                onError={handleImageError}
                 className="w-full h-32 object-cover rounded-md"
               />
 
