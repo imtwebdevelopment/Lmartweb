@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { uploadImageToMongoDB, deleteMongoImageReference } from '../services/imageService';
+import { resolveImageUrl } from '../utils/imageUtils';
 
 const ProfileSettings = () => {
   const navigate = useNavigate();
@@ -11,7 +13,6 @@ const ProfileSettings = () => {
     address: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [profileImage, setProfileImage] = useState(null);
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -56,7 +57,7 @@ const ProfileSettings = () => {
     }));
   };
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -73,18 +74,25 @@ const ProfileSettings = () => {
       return;
     }
 
-    setProfileImage(file);
-    
-    // Create preview URL
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setProfileImageUrl(event.target.result);
-    };
-    reader.readAsDataURL(file);
+    setIsUploading(true);
+    setUploadProgress(0);
+    try {
+      const uploaded = await uploadImageToMongoDB(file, {
+        associatedRecordId: user?.userId || user?.uid || user?.id || '',
+        role: 'user-profile',
+      });
+      setProfileImageUrl(uploaded.url);
+      setUploadProgress(100);
+    } catch (error) {
+      console.error('Profile image upload failed:', error);
+      alert(`Profile image upload failed: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
   };
 
   const handleClearImage = () => {
-    setProfileImage(null);
     setProfileImageUrl('');
   };
 
@@ -99,12 +107,15 @@ const ProfileSettings = () => {
       const updatedUser = {
         ...user,
         ...formData,
-        profileImage: profileImageUrl || user.profileImage,
+        profileImage: profileImageUrl,
         updatedAt: new Date().toISOString()
       };
 
       // Update localStorage
       localStorage.setItem("user", JSON.stringify(updatedUser));
+      if (user.profileImage && user.profileImage !== profileImageUrl) {
+        await deleteMongoImageReference(user.profileImage);
+      }
       
       // Update state
       setUser(updatedUser);
@@ -174,7 +185,7 @@ const ProfileSettings = () => {
                     <div className="relative">
                       {profileImageUrl ? (
                         <img
-                          src={profileImageUrl}
+                          src={resolveImageUrl(profileImageUrl)}
                           alt="Profile"
                           className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                         />

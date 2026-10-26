@@ -9,7 +9,7 @@
 
 export const FALLBACK_IMAGE = '/no-image.svg';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : '');
 
 /**
  * Normalizes any image URL or reference.
@@ -35,18 +35,17 @@ export const resolveImageUrl = (img) => {
   // If it's a mongodb:// URI (e.g. mongodb://6adf...)
   if (raw.startsWith('mongodb://')) {
     const id = raw.replace('mongodb://', '');
-    return `${API_BASE}/images/${id}`;
+    return API_BASE ? `${API_BASE.replace(/\/$/, '')}/images/${id}` : `/api/images/${id}`;
   }
 
   // If it's an ObjectId string (24 hex characters)
   if (/^[0-9a-fA-F]{24}$/.test(raw)) {
-    return `${API_BASE}/images/${raw}`;
+    return API_BASE ? `${API_BASE.replace(/\/$/, '')}/images/${raw}` : `/api/images/${raw}`;
   }
 
   // If it starts with /api/images
   if (raw.startsWith('/api/images')) {
-    const host = API_BASE.replace(/\/api\/?$/, '');
-    return `${host}${raw}`;
+    return API_BASE ? `${API_BASE.replace(/\/api\/?$/, '')}${raw}` : raw;
   }
 
   // If it's an HTTP/HTTPS URL (Firebase, Render, Cloud, etc.)

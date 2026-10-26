@@ -6,6 +6,7 @@ import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp } from "fir
 import { ref, getDownloadURL } from "firebase/storage";
 import emailjs from '@emailjs/browser';
 import { runTransaction } from "firebase/firestore";
+import { resolveImageUrl } from "../utils/imageUtils";
 
 // 🔑 EMAIL.JS CONFIGURATION
 const EMAILJS_SERVICE_ID = "service_yg9pb3f"; 
@@ -423,13 +424,8 @@ const Checkout = () => {
 
   // Get image URL for a product
   const getProductImage = (item) => {
-    // Use item's image if available
-    if (item.image && item.image.startsWith('http')) {
-      return item.image;
-    }
-    
-    // Fallback to placeholder
-    return "https://via.placeholder.com/150?text=No+Image";
+    const image = item.image || (Array.isArray(item.imageURLs) && item.imageURLs[0]);
+    return image ? resolveImageUrl(image) : "https://via.placeholder.com/150?text=No+Image";
   };
 
   // Reverse Geocoding Function - Convert coordinates to address
@@ -1333,11 +1329,11 @@ await decreaseStockAfterOrder(checkoutItems);
                             )}
 
                             <img
-                              src={
+                              src={resolveImageUrl(
                                 item.image ||
                                 (Array.isArray(item.imageURLs) && item.imageURLs[0]) ||
                                 "https://placehold.co/100x100?text=No+Image"
-                              }
+                              )}
                               alt={item.name}
                               className="w-full h-full object-contain"
                               onLoad={() =>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { createProduct, updateProduct } from "../services/productService";
+import { uploadImageToMongoDB, deleteMongoImageReference } from "../services/imageService";
+import { resolveImageUrl } from "../utils/imageUtils";
 
 const ProductForm = ({
   category: initialCategory,
@@ -68,16 +70,54 @@ const ProductForm = ({
         subcategory: formData.subcategory,
         color: formData.color,
         size: formData.size,
-        image: image,
-        images: images,
+        image: existingImage,
+        images: existingImages,
       };
 
       let result;
       if (editMode && editProduct) {
-        result = await updateProduct(editProduct._id, productData);
+        const uploadedImages = await Promise.all(
+          images.map((file, index) => uploadImageToMongoDB(file, {
+            associatedRecordId: editProduct._id,
+            role: 'product',
+            isMain: !image && !existingImage && index === 0,
+          }))
+        );
+        const uploadedMain = image
+          ? await uploadImageToMongoDB(image, { associatedRecordId: editProduct._id, role: 'product', isMain: true })
+          : null;
+        result = await updateProduct(editProduct._id, {
+          ...productData,
+          image: uploadedMain?.url || existingImage,
+          images: [...existingImages, ...uploadedImages.map(item => item.url)],
+        });
+        if (uploadedMain && existingImage) {
+          await deleteMongoImageReference(existingImage);
+        }
         alert("Product updated successfully!");
       } else {
-        result = await createProduct(productData);
+        const createdProduct = await createProduct(productData);
+        const recordId = createdProduct._id || createdProduct.id;
+        if (!recordId && (image || images.length)) {
+          throw new Error("The product API did not return an ID required to associate uploaded images.");
+        }
+        const uploadedImages = await Promise.all(
+          images.map((file, index) => uploadImageToMongoDB(file, {
+            associatedRecordId: recordId,
+            role: 'product',
+            isMain: !image && index === 0,
+          }))
+        );
+        const uploadedMain = image
+          ? await uploadImageToMongoDB(image, { associatedRecordId: recordId, role: 'product', isMain: true })
+          : null;
+        result = (image || images.length)
+          ? await updateProduct(recordId, {
+            ...productData,
+            image: uploadedMain?.url || '',
+            images: uploadedImages.map(item => item.url),
+          })
+          : createdProduct;
         alert("Product created successfully!");
       }
 
@@ -339,7 +379,7 @@ const ProductForm = ({
             {existingImage && (
               <div className="mb-3">
                 <img
-                  src={existingImage}
+                  src={resolveImageUrl(existingImage)}
                   alt="Current product"
                   className="w-32 h-32 object-cover rounded-lg border"
                 />
@@ -371,7 +411,7 @@ const ProductForm = ({
                   {existingImages.map((img, index) => (
                     <img
                       key={index}
-                      src={img}
+                      src={resolveImageUrl(img)}
                       alt={`Product image ${index + 1}`}
                       className="w-20 h-20 object-cover rounded-lg border"
                     />

@@ -68,10 +68,12 @@ export const createProduct = async (productData) => {
     // Append all product data to FormData
     Object.keys(productData).forEach(key => {
       if (key === 'images' && productData[key]) {
-        // Handle multiple images
-        Array.from(productData[key]).forEach(file => {
-          formData.append('images', file);
-        });
+        const images = Array.from(productData[key]);
+        if (images.every(file => file instanceof File)) {
+          images.forEach(file => formData.append('images', file));
+        } else {
+          formData.append(key, JSON.stringify(images));
+        }
       } else if (key === 'image' && productData[key] instanceof File) {
         // Handle single image file
         formData.append('image', productData[key]);
@@ -115,10 +117,12 @@ export const updateProduct = async (productId, productData) => {
     // Append all product data to FormData
     Object.keys(productData).forEach(key => {
       if (key === 'images' && productData[key]) {
-        // Handle multiple images
-        Array.from(productData[key]).forEach(file => {
-          formData.append('images', file);
-        });
+        const images = Array.from(productData[key]);
+        if (images.every(file => file instanceof File)) {
+          images.forEach(file => formData.append('images', file));
+        } else {
+          formData.append(key, JSON.stringify(images));
+        }
       } else if (key === 'image' && productData[key] instanceof File) {
         // Handle single image file
         formData.append('image', productData[key]);

@@ -16,11 +16,11 @@ import {
   getStorage,
   ref,
   uploadBytesResumable,
-  getDownloadURL,
-  deleteObject
+  getDownloadURL
 } from "firebase/storage";
 import { useAuth } from "../context/AuthProvaider";
-import { getProductMainImage, handleImageError } from "../utils/imageUtils";
+import { getProductMainImage, handleImageError, resolveImageUrl } from "../utils/imageUtils";
+import { uploadImageToMongoDB, isImageFile } from "../services/imageService";
 
 
 const Navbar = () => {
@@ -35,6 +35,7 @@ const Navbar = () => {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const storage = getStorage();
   const dropdownRef = useRef(null);
   const searchRef = useRef(null);
 
@@ -58,7 +59,6 @@ const Navbar = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Firebase Storage instance
-  const storage = getStorage();
 
   // Scroll to top function
   const scrollToTop = () => {
@@ -373,9 +373,6 @@ const Navbar = () => {
 
         console.log(`📄 Uploading file ${i + 1}/${files.length}:`, file.name);
 
-        // Create storage reference
-        const storageRef = ref(storage, storagePath);
-
         // Create file data object
         const fileData = {
           fileId: `file_${timestamp}_${i}`,
@@ -383,52 +380,61 @@ const Navbar = () => {
           fileName: uniqueFileName,
           fileType: file.type,
           fileSize: file.size,
-          storagePath: storagePath,
+          storagePath,
           status: "uploading",
           uploadedAt: new Date().toISOString(),
           lastUpdated: new Date().toISOString()
         };
 
-        // Upload file to Firebase Storage
-        await new Promise((resolve, reject) => {
-          const uploadTask = uploadBytesResumable(storageRef, file);
+        if (isImageFile(file)) {
+          const uploaded = await uploadImageToMongoDB(file, {
+            associatedRecordId: uploadId,
+            role: 'customer-file',
+          });
+          fileData.downloadURL = uploaded.url;
+          fileData.storagePath = uploaded.path;
+          fileData.imageId = uploaded.id;
+          fileData.fileType = uploaded.contentType || file.type;
+          fileData.status = "uploaded";
+          fileData.lastUpdated = new Date().toISOString();
+          setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
+          uploadedFilesData.push(fileData);
+        } else {
+          const storageRef = ref(storage, storagePath);
+          await new Promise((resolve, reject) => {
+            const uploadTask = uploadBytesResumable(storageRef, file);
 
-          uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setUploadProgress(prev => ({
-                ...prev,
-                [file.name]: progress
-              }));
-              console.log(`📤 Uploading ${file.name}: ${progress.toFixed(2)}%`);
-            },
-            (error) => {
-              console.error(`❌ Error uploading ${file.name}:`, error);
-              fileData.status = "failed";
-              fileData.error = error.message;
-              reject(error);
-            },
-            async () => {
-              try {
-                // Get download URL
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                fileData.downloadURL = downloadURL;
-                fileData.status = "uploaded";
-                fileData.lastUpdated = new Date().toISOString();
-                console.log(`✅ File uploaded: ${file.name}`);
-
-                uploadedFilesData.push(fileData);
-                resolve();
-              } catch (urlError) {
-                console.error(`❌ Error getting download URL:`, urlError);
+            uploadTask.on(
+              'state_changed',
+              (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                setUploadProgress(prev => ({
+                  ...prev,
+                  [file.name]: progress
+                }));
+              },
+              (error) => {
                 fileData.status = "failed";
-                fileData.error = "Failed to get download URL";
-                reject(urlError);
+                fileData.error = error.message;
+                reject(error);
+              },
+              async () => {
+                try {
+                  const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                  fileData.downloadURL = downloadURL;
+                  fileData.status = "uploaded";
+                  fileData.lastUpdated = new Date().toISOString();
+                  uploadedFilesData.push(fileData);
+                  resolve();
+                } catch (urlError) {
+                  fileData.status = "failed";
+                  fileData.error = "Failed to get download URL";
+                  reject(urlError);
+                }
               }
-            }
-          );
-        });
+            );
+          });
+        }
       }
 
       console.log("✅ All files uploaded to storage:", uploadedFilesData.length);
@@ -704,7 +710,7 @@ const Navbar = () => {
                   >
                     {user.photoURL ? (
                       <img
-                        src={user.photoURL}
+                        src={resolveImageUrl(user.photoURL)}
                         alt="Profile"
                         className="w-5 h-5 rounded-full object-cover"
                       />
@@ -877,7 +883,7 @@ const Navbar = () => {
                 >
                   {user.photoURL ? (
                     <img
-                      src={user.photoURL}
+                      src={resolveImageUrl(user.photoURL)}
                       alt="Profile"
                       className="w-6 h-6 rounded-full object-cover"
                     />

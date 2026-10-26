@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { useLocation } from 'react-router-dom'
+import { resolveImageUrl } from '../utils/imageUtils'
 import { 
   X, 
   Calendar, 
@@ -213,7 +214,7 @@ const NewsToday = () => {
                 <div className="h-56 relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
                   {article.mainImage ? (
                     <img
-                      src={article.mainImage}
+                      src={resolveImageUrl(article.mainImage)}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       alt={article.title}
                     />
@@ -350,7 +351,7 @@ const NewsToday = () => {
                   {selectedArticle.mainImage && (
                     <div className="h-96 bg-gradient-to-br from-gray-50 to-gray-100 flex justify-center items-center relative">
                       <img
-                        src={selectedArticle.mainImage}
+                        src={resolveImageUrl(selectedArticle.mainImage)}
                         className="max-h-full max-w-full object-contain p-4"
                         alt=""
                       />
@@ -427,7 +428,7 @@ const NewsToday = () => {
                       </div>
                       <div className="relative h-96 rounded-xl overflow-hidden mb-4">
                         <img
-                          src={selectedArticle.gallery[currentGalleryIndex]}
+                          src={resolveImageUrl(selectedArticle.gallery[currentGalleryIndex])}
                           className="w-full h-full object-contain bg-gray-50"
                           alt={`Gallery image ${currentGalleryIndex + 1}`}
                         />

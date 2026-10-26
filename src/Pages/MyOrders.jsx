@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { collection, query, getDocs, orderBy, doc, updateDoc, Timestamp, addDoc } from 'firebase/firestore'; 
 import { db } from '../../firebase';
 import emailjs from "@emailjs/browser";  
+import { resolveImageUrl } from "../utils/imageUtils";
 
 // ----------------------------------------------------
 //  EMAILJS CONFIGURATION
@@ -688,7 +689,7 @@ const MyOrders = () => {
                       className="flex items-center gap-4 border-b pb-4 last:border-0"
                     >
                       <img 
-                        src={item.image || item.imageUrl || '/placeholder-image.jpg'} 
+                        src={resolveImageUrl(item.image || item.imageUrl || '/placeholder-image.jpg')}
                         alt={item.name}
                         className="w-20 h-20 object-cover rounded-lg border"
                         onError={(e) => {

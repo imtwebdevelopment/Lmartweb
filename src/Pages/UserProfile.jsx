@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { auth, db, storage } from "../../firebase";
+import { auth, db } from "../../firebase";
 import {
   doc,
   getDoc,
@@ -7,7 +7,6 @@ import {
   deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
@@ -15,6 +14,8 @@ import {
 } from "firebase/auth";
 
 import { useNavigate } from "react-router-dom";
+import { uploadImageToMongoDB, deleteMongoImageReference } from "../services/imageService";
+import { resolveImageUrl } from "../utils/imageUtils";
 
 const formatDate = (value) => {
   if (!value) return "-";
@@ -140,9 +141,11 @@ const UserProfile = () => {
     setUploading(true);
 
     try {
-      const imageRef = ref(storage, `profile/${user.uid}.jpg`);
-      await uploadBytes(imageRef, file);
-      const url = await getDownloadURL(imageRef);
+      const uploaded = await uploadImageToMongoDB(file, {
+        associatedRecordId: user.uid,
+        role: 'user-profile',
+      });
+      const url = uploaded.url;
 
       // Update local state
       setForm((prev) => ({ ...prev, photoURL: url }));
@@ -152,6 +155,9 @@ const UserProfile = () => {
         photoURL: url,
         lastUpdated: serverTimestamp(),
       });
+      if (form.photoURL && form.photoURL !== url) {
+        await deleteMongoImageReference(form.photoURL);
+      }
 
       
     } catch (err) {
@@ -182,7 +188,7 @@ const UserProfile = () => {
     // ✅ Update Firebase Auth profile (CORRECT WAY)
     await updateProfile(auth.currentUser, {
       displayName: form.name.trim(),
-      photoURL: form.photoURL,
+      photoURL: resolveImageUrl(form.photoURL),
     });
 
   } catch (err) {
@@ -309,7 +315,7 @@ const UserProfile = () => {
           <div className="text-center">
             <div className="relative inline-block">
               <img
-                src={form.photoURL || "/avatar.png"}
+                src={resolveImageUrl(form.photoURL)}
                 alt="Profile"
                 className="w-32 h-32 mx-auto rounded-full object-cover border-4 border-white shadow"
               />

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { resolveImageUrl } from "../utils/imageUtils";
 
 const OldeeProductDetails = ({ product, onBack, onEdit }) => {
   const navigate = useNavigate();
@@ -116,7 +117,7 @@ const OldeeProductDetails = ({ product, onBack, onEdit }) => {
               <div className="mb-6">
                 {mainImage ? (
                   <img
-  src={mainImage}
+  src={resolveImageUrl(mainImage)}
   alt={name}
   className="w-full h-[70vh] object-contain rounded-xl shadow-lg bg-white"
 />
@@ -143,7 +144,7 @@ const OldeeProductDetails = ({ product, onBack, onEdit }) => {
                       title={`View image ${index + 1}`}
                     >
                      <img
-  src={url}
+  src={resolveImageUrl(url)}
   alt={`${name} - ${index + 1}`}
   className="w-full h-full object-contain bg-white"
 />

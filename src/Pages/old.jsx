@@ -15,10 +15,11 @@ import {
   limit,
   deleteDoc,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, auth } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import OldeeProductDetails from "./OldeeProductDetails";
+import { uploadImageToMongoDB, deleteMongoImageReference } from "../services/imageService";
+import { resolveImageUrl } from "../utils/imageUtils";
 
 const MAX_FILES = 5;
 const MAX_MB = 5;
@@ -167,7 +168,7 @@ const SellProductForm = ({
 
   const removeNewImage = (i) => setImages((prev) => prev.filter((_, idx) => idx !== i));
   const removeExistingImage = (url) =>
-    setExistingImages((prev) => prev.filter((u) => u !== url));
+    setExistingImages((prev) => prev.filter((existingUrl) => existingUrl !== url));
 
   const setAsPrimary = (url, isExisting = true) => {
     if (isExisting) {
@@ -314,19 +315,20 @@ const SellProductForm = ({
       };
 
       const newUrls = [];
+      const newProductRef = isEdit ? null : doc(collection(db, COLLECTION));
       for (let i = 0; i < images.length; i++) {
         const img = images[i];
-        const ext = (img.file.name.split(".").pop() || "jpg").toLowerCase();
-        const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
-        const path = `${COLLECTION}/${user.uid || "anon"}/products/${isEdit ? editDoc.id : "new"}/${Date.now()}_${i}.${safeExt}`;
-        const storageRef = ref(storage, path);
-        const snap = await uploadBytes(storageRef, img.file);
-        const url = await getDownloadURL(snap.ref);
-        newUrls.push(url);
+        const uploaded = await uploadImageToMongoDB(img.file, {
+          associatedRecordId: isEdit ? editDoc.id : newProductRef.id,
+          role: 'oldee-product',
+          isMain: i === 0 && existingImages.length === 0,
+        });
+        newUrls.push(uploaded.url);
         setUploadProgress(Math.round(((i + 1) / images.length) * 100));
       }
 
       const finalURLs = [...existingImages, ...newUrls];
+      const removedImages = (editDoc?.imageURLs || []).filter((url) => !existingImages.includes(url));
 
       if (isEdit) {
         const updatePayload = {
@@ -348,6 +350,7 @@ const SellProductForm = ({
           updatedAt: serverTimestamp(),
         };
         await updateDoc(doc(db, COLLECTION, editDoc.id), updatePayload);
+        await Promise.all(removedImages.map(deleteMongoImageReference));
         onSave({ id: editDoc.id, ...updatePayload });
       } else {
         const baseData = {
@@ -365,15 +368,13 @@ const SellProductForm = ({
           status: "pending",
           marketplace: "oldee",
         };
-        const colRef = collection(db, COLLECTION);
-        const docRef = await addDoc(colRef, baseData);
-
-        await updateDoc(doc(db, COLLECTION, docRef.id), {
+        await setDoc(newProductRef, {
+          ...baseData,
           imageURLs: finalURLs,
           publishedAt: serverTimestamp(),
         });
 
-        onSave({ ...baseData, imageURLs: finalURLs, id: docRef.id });
+        onSave({ ...baseData, imageURLs: finalURLs, id: newProductRef.id });
       }
     } catch (error) {
       console.error("Submit listing error:", error);
@@ -407,8 +408,8 @@ const SellProductForm = ({
   const discountPct = hasDiscount ? Math.round(((priceNum - offerPriceNum) / priceNum) * 100) : 0;
 
   const allImages = [
-    ...existingImages.map(url => ({ url, isExisting: true, isPrimary: url === existingImages[0] })),
-    ...images.map(img => ({ url: img.preview, isExisting: false, isPrimary: existingImages.length === 0 && img.preview === images[0]?.preview })),
+    ...existingImages.map(url => ({ url, previewUrl: resolveImageUrl(url), isExisting: true, isPrimary: url === existingImages[0] })),
+    ...images.map(img => ({ url: img.preview, previewUrl: img.preview, isExisting: false, isPrimary: existingImages.length === 0 && img.preview === images[0]?.preview })),
   ];
   const totalImageCount = existingImages.length + images.length;
   const showPrimaryButton = totalImageCount > 1;
@@ -658,7 +659,7 @@ const SellProductForm = ({
                             style={{ borderColor: img.isPrimary ? '#3b82f6' : '#e5e7eb' }}
                           >
                             <img
-                              src={img.url}
+                              src={img.previewUrl}
                               alt={`Product ${idx + 1}`}
                               className="w-full h-20 object-contain rounded-md"
                             />
@@ -1009,7 +1010,7 @@ const ProductsViewer = ({ user, isAdmin, onClose, onEdit, isUserViewer = false }
                   {Array.isArray(p.imageURLs) && p.imageURLs[0] && (
                     <div className="relative h-56 mb-2 rounded-lg overflow-hidden">
                       <img 
-                        src={p.imageURLs[0]} 
+                        src={resolveImageUrl(p.imageURLs[0])}
                         alt={p.name} 
                         className="w-full h-full object-contain mx-auto" 
                       />
@@ -1516,7 +1517,7 @@ const Oldee = () => {
                   <div className="relative h-56 overflow-hidden">
                     {Array.isArray(p.imageURLs) && p.imageURLs[0] && (
                       <img 
-                        src={p.imageURLs[0]} 
+                        src={resolveImageUrl(p.imageURLs[0])}
                         alt={p.name} 
                         className="w-md h-full object-contain group-hover:scale-105 transition-transform duration-300"
                       />
