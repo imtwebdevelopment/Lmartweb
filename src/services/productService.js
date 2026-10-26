@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { API_BASE } from '../utils/apiConfig';
+
+const API_BASE_URL = API_BASE;
 
 // Get all products by category
 export const getProductsByCategory = async (category) => {
