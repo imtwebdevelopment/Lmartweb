@@ -33,7 +33,7 @@ export const uploadImageToMongoDB = async (file, { associatedRecordId = '', prod
   return {
     id: result.id,
     url: `/api/images/${result.id}`,
-    path: `mongodb://${result.id}`,
+    path: `/api/images/${result.id}`,
     name: result.originalName || file.name,
     contentType: result.contentType,
     type: 'mongodb',
@@ -67,4 +67,36 @@ export const deleteMongoImageReference = async (imageReference) => {
   return null;
 };
 
-export default { uploadImageToMongoDB, deleteImageFromMongoDB, deleteMongoImageReference };
+export const deleteMongoImagesForProduct = async (product) => {
+  const references = [
+    product?.mainImageUrl,
+    ...(Array.isArray(product?.imageUrls) ? product.imageUrls : []),
+  ];
+  if (product?.id) {
+    const response = await fetch(`${getApiBase()}/images/product/${encodeURIComponent(product.id)}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `Failed to list product images (${response.status})`);
+    }
+    const result = await response.json();
+    references.push(...(Array.isArray(result.images) ? result.images : []));
+  }
+  const imageIds = [...new Set(
+    references
+      .map((image) => {
+        if (typeof image === 'string') return getMongoImageId(image);
+        return getMongoImageId(image?.id || image?.url || image?.path);
+      })
+      .filter(Boolean)
+  )];
+
+  await Promise.all(imageIds.map((imageId) => deleteImageFromMongoDB(imageId)));
+  return imageIds.length;
+};
+
+export default {
+  uploadImageToMongoDB,
+  deleteImageFromMongoDB,
+  deleteMongoImageReference,
+  deleteMongoImagesForProduct,
+};
